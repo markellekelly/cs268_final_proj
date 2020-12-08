@@ -58,7 +58,7 @@ mutable struct NeuralNetwork
         for i in 1:(length(nhidden) - 1)
             push!(l, Layer(nhidden[i], nhidden[i+1]))
         end
-        push!(l, Layer(nhidden[end], noutput, isoutputlayer=true))
+        push!(l, Layer(nhidden[end], noutput, t, isoutputlayer=true))
         return new(l, η, β1, β2, t)
     end
 
