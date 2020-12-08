@@ -102,7 +102,7 @@ function backpropagate(output::Array, nn::NeuralNetwork, s::Int64, best::Bool)
             layer.all_synapses[s] += -η * transpose(layer.input) * δ
         else
             # todo: replace 0 with the Lf thing
-            layer.all_synapses[s] += -nn.β1 * transpose(layer.input) * δ - nn.β2 * 0
+            layer.all_synapses[s] += -nn.β1 * transpose(layer.input) * δ - nn.β2 * norm(Lf(s))
         end
         layer.bias = layer.bias .+ (-η * δ)
     end
@@ -111,6 +111,20 @@ end
 function prepare(data)::Array{Float64, 2}
     data = cat(2, data)
     return data
+end
+
+function Lf(s)
+    current = nn.all_synapses[s]
+    best = nn.best_synapses
+    x_diff = xi - nn.all_synapses[best] + 0.01
+    res1 = feedforward(data, nn, s)
+    cost1 = err.(res1, output)
+    cost1 = sum(cost1)
+    res2 = feedforward(data, nn, best)
+    cost2 = err.(res2, output)
+    cost2 = sum(cost2)
+    cost_diff = cost1 - cost2
+    return cost_diff/x_diff
 end
 
 function predict(data::Array, output::Array, nn::NeuralNetwork)
