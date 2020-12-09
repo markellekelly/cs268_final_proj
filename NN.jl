@@ -98,7 +98,7 @@ function backpropagate(output::Array, nn::NeuralNetwork)
 end
 
 function prepare(data)::Array{Float64, 2}
-    data = cat(2, data)
+    data = hcat(data)
     return data
 end
 

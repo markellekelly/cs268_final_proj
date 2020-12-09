@@ -1,5 +1,5 @@
 module EVGONN
-
+using LinearAlgebra;
 export NeuralNetwork, predict, train, prepare, backup
 
 sigmoid(x) = 1. / (1 + exp(-x))
@@ -83,7 +83,7 @@ err(prediction, target) = 0.5 * (target - prediction) ^ 2
 
 ∇err(prediction, target) = prediction - target
 
-function backpropagate(output::Array, nn::NeuralNetwork, s::Int64, best::Bool)
+function backpropagate(data::Array, output::Array, nn::NeuralNetwork, s::Int64, best::Bool)
     η = nn.learning_rate
     layer = nn.layers[end]
     # calculate partial derivatives
@@ -101,22 +101,22 @@ function backpropagate(output::Array, nn::NeuralNetwork, s::Int64, best::Bool)
         if best
             layer.all_synapses[s] += -η * transpose(layer.input) * δ
         else
-            # todo: replace 0 with the Lf thing
-            layer.all_synapses[s] += -nn.β1 * transpose(layer.input) * δ - nn.β2 * norm(Lf(s))
+            Lf_r = norm(Lf(data, output, s, i, nn))
+            layer.all_synapses[s] += -nn.β1 * transpose(layer.input) * δ .- nn.β2 * Lf_r
         end
         layer.bias = layer.bias .+ (-η * δ)
     end
 end
 
 function prepare(data)::Array{Float64, 2}
-    data = cat(2, data)
+    data = hcat(data)
     return data
 end
 
-function Lf(s)
-    current = nn.all_synapses[s]
+function Lf(data::Array, output::Array, s::Int64, i::Int64, nn::NeuralNetwork)
+    xi = nn.layers[i].all_synapses[s]
     best = nn.best_synapses
-    x_diff = xi - nn.all_synapses[best] + 0.01
+    x_diff = xi - nn.layers[i].all_synapses[best] .+ 0.01
     res1 = feedforward(data, nn, s)
     cost1 = err.(res1, output)
     cost1 = sum(cost1)
@@ -124,7 +124,7 @@ function Lf(s)
     cost2 = err.(res2, output)
     cost2 = sum(cost2)
     cost_diff = cost1 - cost2
-    return cost_diff/x_diff
+    return cost_diff ./ x_diff
 end
 
 function predict(data::Array, output::Array, nn::NeuralNetwork)
@@ -151,15 +151,16 @@ function train(data::Array, output::Array, nn::NeuralNetwork)
             best_cost = cost
         end
     end
-    for s in 1:nn.t
-        backpropagate(output, nn, s, s == best_cost_ind)
-    end
     nn.best_synapses = best_cost_ind
-    return Dict("result" => result, "cost" => cost)
+    for s in 1:nn.t
+        backpropagate(data, output, nn, s, s == best_cost_ind)
+    end
+    return Dict("result" => result, "cost" => best_cost)
 end
 
 function predict(data::Array, nn::NeuralNetwork)
-    result = feedforward(data, nn)
+    feedforward(data, nn, nn.best_synapses)
+    result = feedforward(data, nn, nn.best_synapses)
     return Dict("result" => result)
 end
 
