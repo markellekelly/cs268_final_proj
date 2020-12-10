@@ -25,7 +25,7 @@ end
 mutable struct Layer
     # weights and biases
     all_synapses::Array
-    bias::Array
+    all_bias::Array
     # activations
     out::Function
     ∇out::Function
@@ -36,12 +36,14 @@ mutable struct Layer
 
     function Layer(ninput::Int, noutput::Int, t; isoutputlayer=false)
         bias = isoutputlayer ? zeros(1, noutput) : randn(1, noutput)
+        all_bias = [bias]
         synapses = randn(ninput, noutput)
         all_synapses = [synapses]
         for i in 1:t-1
             push!(all_synapses, randn(ninput, noutput))
+            push!(all_bias, isoutputlayer ? zeros(1, noutput) : randn(1, noutput))
         end
-        return new(all_synapses, bias, sigmoid, ∇sigmoid)
+        return new(all_synapses, all_bias, sigmoid, ∇sigmoid)
     end
 end
 
@@ -56,7 +58,7 @@ mutable struct NeuralNetwork
     function NeuralNetwork(ninput::Int64, nhidden::Tuple, noutput::Int64, t::Int64; η=0.01, β1=0.01, β2=0.01)
         l = [Layer(ninput, nhidden[1],t)]
         for i in 1:(length(nhidden) - 1)
-            push!(l, Layer(nhidden[i], nhidden[i+1]))
+            push!(l, Layer(nhidden[i], nhidden[i+1], t))
         end
         push!(l, Layer(nhidden[end], noutput, t, isoutputlayer=true))
         return new(l, η, β1, β2, t)
@@ -71,7 +73,7 @@ end
 function feedforward(data::Array, nn::NeuralNetwork, s::Int64)
     for layer in nn.layers
         layer.input = data
-        data = data * layer.all_synapses[s] .+ layer.bias
+        data = data * layer.all_synapses[s] .+ layer.all_bias[s]
         layer.net = data
         data = layer.out.(data)
         layer.output = data
@@ -104,7 +106,7 @@ function backpropagate(data::Array, output::Array, nn::NeuralNetwork, s::Int64, 
             Lf_r = norm(Lf(data, output, s, i, nn))
             layer.all_synapses[s] += -nn.β1 * transpose(layer.input) * δ .- nn.β2 * Lf_r
         end
-        layer.bias = layer.bias .+ (-η * δ)
+        layer.all_bias[s] = layer.all_bias[s] .+ (-η * δ)
     end
 end
 
@@ -116,7 +118,7 @@ end
 function Lf(data::Array, output::Array, s::Int64, i::Int64, nn::NeuralNetwork)
     xi = nn.layers[i].all_synapses[s]
     best = nn.best_synapses
-    x_diff = xi - nn.layers[i].all_synapses[best] .+ 0.01
+    x_diff = xi - nn.layers[i].all_synapses[best] .+ 0.1
     res1 = feedforward(data, nn, s)
     cost1 = err.(res1, output)
     cost1 = sum(cost1)
@@ -153,13 +155,13 @@ function train(data::Array, output::Array, nn::NeuralNetwork)
     end
     nn.best_synapses = best_cost_ind
     for s in 1:nn.t
+        feedforward(data, nn, s)
         backpropagate(data, output, nn, s, s == best_cost_ind)
     end
     return Dict("result" => result, "cost" => best_cost)
 end
 
 function predict(data::Array, nn::NeuralNetwork)
-    feedforward(data, nn, nn.best_synapses)
     result = feedforward(data, nn, nn.best_synapses)
     return Dict("result" => result)
 end
