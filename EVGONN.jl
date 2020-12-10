@@ -118,13 +118,13 @@ end
 function Lf(data::Array, output::Array, s::Int64, i::Int64, nn::NeuralNetwork)
     xi = nn.layers[i].all_synapses[s]
     best = nn.best_synapses
-    x_diff = xi - nn.layers[i].all_synapses[best] .+ 0.1
-    res1 = feedforward(data, nn, s)
-    cost1 = err.(res1, output)
-    cost1 = sum(cost1)
+    x_diff = xi - nn.layers[i].all_synapses[best] .+ 0.0005
     res2 = feedforward(data, nn, best)
     cost2 = err.(res2, output)
     cost2 = sum(cost2)
+    res1 = feedforward(data, nn, s)
+    cost1 = err.(res1, output)
+    cost1 = sum(cost1)
     cost_diff = cost1 - cost2
     return cost_diff ./ x_diff
 end
