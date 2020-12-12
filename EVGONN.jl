@@ -39,6 +39,7 @@ mutable struct Layer
         all_bias = [bias]
         synapses = randn(ninput, noutput)
         all_synapses = [synapses]
+        # instead of initializing synapses and bias 1x, do it a bunch of times in an array
         for i in 1:t-1
             push!(all_synapses, randn(ninput, noutput))
             push!(all_bias, isoutputlayer ? zeros(1, noutput) : randn(1, noutput))
@@ -50,6 +51,7 @@ end
 mutable struct NeuralNetwork
     layers::Array{Layer}
     learning_rate::Float64
+    # new params
     β1::Float64
     β2::Float64
     t::Int64
@@ -100,8 +102,10 @@ function backpropagate(data::Array, output::Array, nn::NeuralNetwork, s::Int64, 
         ∂err_∂out = δ * transpose(nn.layers[i + 1].all_synapses[s])
         ∂out_∂net = layer.∇out.(layer.net)
         δ = ∂err_∂out .* ∂out_∂net
+        # if best synapses, do normal gradient descent
         if best
             layer.all_synapses[s] += -η * transpose(layer.input) * δ
+        # otherwise, do gradient descent with movement along the hyperplane
         else
             Lf_r = norm(Lf(data, output, s, i, nn))
             layer.all_synapses[s] += -nn.β1 * transpose(layer.input) * δ .- nn.β2 * Lf_r
@@ -140,6 +144,7 @@ end
 
 function train(data::Array, output::Array, nn::NeuralNetwork)
     best_cost_ind = 1
+    # keep track of best weights
     result = feedforward(data, nn, 1)
     best_cost = sum(err.(result, output))
     for s in 2:nn.t
@@ -155,6 +160,7 @@ function train(data::Array, output::Array, nn::NeuralNetwork)
     end
     nn.best_synapses = best_cost_ind
     for s in 1:nn.t
+        # run feedforward again (I know) so the layer has the right in/out vals
         feedforward(data, nn, s)
         backpropagate(data, output, nn, s, s == best_cost_ind)
     end
