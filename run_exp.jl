@@ -51,8 +51,7 @@ function training(nn, k, iters=1000)
         end
         if it % 10 == 0
             new_costs = sum(costs)
-            println("error = ", new_costs)
-            if abs(new_costs - old_costs) < 5
+            if abs(new_costs - old_costs) < 10
                 total_time = (time() - start)
                 test_acc = check(nn)
                 return [k, new_costs, test_acc, it, total_time]
@@ -62,7 +61,7 @@ function training(nn, k, iters=1000)
     new_costs = sum(costs)
     total_time = (time() - start)
     test_acc = check(nn)
-    return [k, new_costs, test_acc, it, total_time]
+    return [k, new_costs, test_acc, iters, total_time]
 end
 
 # experiment: train for different values of k
