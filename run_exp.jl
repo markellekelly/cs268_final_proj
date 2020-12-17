@@ -40,22 +40,32 @@ function check(nn)
     return checks["HIT"] / n_test
 end
 
-function training(nn, k, iters=1000)
+function training(nn, k, iters=10000)
     start = time()
     costs = zeros(n_train)
     old_costs = sum(costs)
+    losses = zeros(2000)
+    j = 0
     for it in 1:iters
         for i in 1:n_train
             result = EVGONN.train(EVGONN.prepare(X_train[:, 1, i]'), EVGONN.prepare(y_train[i, :]'), nn)
             costs[i] = result["cost"]
         end
-        if it % 10 == 0
+        if it % 5 == 0
             new_costs = sum(costs)
-            if abs(new_costs - old_costs) < 10
+            losses[j] = new_costs
+            fname = string("losses-", k, ".txt")
+            writedlm(fname, losses)
+            j = j + 1
+            if abs(new_costs - old_costs) < 25
                 total_time = (time() - start)
                 test_acc = check(nn)
                 return [k, new_costs, test_acc, it, total_time]
             end
+        end
+        if it % 10 == 0
+            nn.learning_rate = nn.learning_rate * 0.9
+            nn.β1 = nn.β1 * 0.95
         end
     end
     new_costs = sum(costs)
@@ -65,10 +75,10 @@ function training(nn, k, iters=1000)
 end
 
 # experiment: train for different values of k
-ks = [1,2,3,4,5]
+ks = [2,3,4,5]
 res = []
 for k in ks
-    nn = EVGONN.NeuralNetwork(n_var, (40,20,20), n_categories, k, η=0.01, β1=0.01, β2=0.0000001);
+    nn = EVGONN.NeuralNetwork(n_var, (40,20,15), n_categories, k, η=0.05, β1=0.02, β2=0.0000001);
     push!(res, training(nn, k))
     writedlm("out.txt", res)
 end
