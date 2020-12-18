@@ -57,7 +57,7 @@ function training(nn, k, iters=10000)
             fname = string("losses-", k, ".txt")
             writedlm(fname, losses)
             j = j + 1
-            if abs(new_costs - old_costs) < 25
+            if abs(new_costs - old_costs) < 5
                 total_time = (time() - start)
                 test_acc = check(nn)
                 return [k, new_costs, test_acc, it, total_time]
